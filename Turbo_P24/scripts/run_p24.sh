@@ -1,0 +1,24 @@
+TOKENIZERS_PARALLELISM=false CUDA_VISIBLE_DEVICES="0,1" accelerate launch --config_file config_zero2_single.yaml --main_process_port 29380 ../main.py \
+    --env-name gym_cards/Points24-v0 \
+    --init-lr 1e-5 \
+    --end-lr 1e-9 \
+    --lr_max_steps 25 \
+    --eval-num-per-episode 200 \
+    --num-env-steps 30720 \
+    --num-steps 1024 \
+    --grad-accum-steps 128 \
+    --max-new-tokens 256 \
+    --thought-prob-coef 0.5 \
+    --use-gae \
+    --seed 1 \
+    --temperature 0.2 \
+    --ppo-epoch 4 \
+    --mini-batch-size 1 \
+    --model-path MODEL_PATH_HERE \
+    --use-lora \
+    --train-vision all \
+    --output_dir CHECKPOINTS_DIR_HERE \
+    --tht-guide SFT \
+    --wandb-project WANDB_PROJ_NAME_HERE \
+    --tag TurboSFT \
+    --use-wandb \
