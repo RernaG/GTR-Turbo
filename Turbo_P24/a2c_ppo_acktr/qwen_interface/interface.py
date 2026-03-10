@@ -51,8 +51,8 @@ def qwen_evaluate(value_model, processor, prompt_text, output_ids, image_tensor,
     output_ids_mask = (output_ids != 0)[:, 1:]
     selected_log_probs = output_ids_mask*torch.take_along_dim(log_probs[:, input_token_len:-1], output_ids[:,1:].unsqueeze(2), dim = 2).squeeze(2)
     unfolded = output_ids.unfold(dimension=-1, size=2, step=1)
-    target = torch.tensor([1311, 788]).to(base.device)
-    # tokens for text string:'"action":' (torch.tensor([[1311, 788]]))
+    _action_token_ids = processor.tokenizer.encode('"action":', add_special_tokens=False)
+    target = torch.tensor(_action_token_ids[-2:]).to(base.device)
     matches = (unfolded == target).all(dim = -1)
     match_index = matches.nonzero(as_tuple=True)[-1]
     if match_index.shape[0] >= 1:

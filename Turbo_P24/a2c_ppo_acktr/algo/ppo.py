@@ -76,29 +76,32 @@ class PPO():
                     obs_batch = obs_batch.to(self.actor_critic.base.device)
                     output_ids_batch = output_ids_batch.to(self.actor_critic.base.device)
                     actions_batch = actions_batch.to(self.actor_critic.base.device)
-                    value_preds_batch.to(self.actor_critic.base.device)
+                    value_preds_batch = value_preds_batch.to(self.actor_critic.base.device)
                     return_batch = return_batch.to(self.actor_critic.base.device)
-                    masks_batch.to(self.actor_critic.base.device)
+                    masks_batch = masks_batch.to(self.actor_critic.base.device)
                     old_action_log_probs_batch = old_action_log_probs_batch.to(self.actor_critic.base.device)
                     adv_targ = adv_targ.to(self.actor_critic.base.device)
 
+                    # --- SFT loss: backward via DS engine to init buffers, then undo step counter ---
                     if args.tht_guide == 'SFT':
-                        # SFT loss
                         if not torch.all(labels_batch == -100):
                             sft_loss, _ = self.actor_critic.sft_forward(
                                 imgs = bc_obs_batch,
                                 input_ids = input_ids_batch,
                                 labels = labels_batch
                             )
-                            self.accelerator.backward(sft_loss)
+                            self.actor_critic.backward(sft_loss)
+                            _opt = self.actor_critic.optimizer
+                            while hasattr(_opt, 'optimizer'):
+                                _opt = _opt.optimizer
+                            if hasattr(_opt, 'micro_step_id'):
+                                _opt.micro_step_id -= 1
                             sft_loss_epoch += sft_loss.item()
                             sft_grad_step += 1
 
-                    # PPO Loss
-                    # Reshape to do in a single forward pass for all steps
+                    # --- PPO loss ---
                     values, action_log_probs = self.actor_critic.evaluate_actions(
                         obs_batch, output_ids_batch)
-                    # values and action_log_probs on two different devices!! because they come from two llava
                     if torch.isnan(action_log_probs).any():
                         continue
                     old_action_log_probs_batch = old_action_log_probs_batch.to(action_log_probs.device).view(-1)
@@ -106,14 +109,12 @@ class PPO():
                     value_preds_batch = value_preds_batch.to(values.device)
                     return_batch = return_batch.to(values.device)
 
-
                     ratio = torch.exp(action_log_probs -
                                     old_action_log_probs_batch)
 
                     surr1 = ratio * adv_targ
                     surr2 = torch.clamp(ratio, 1.0 - self.clip_param,
                                         1.0 + self.clip_param) * adv_targ
-                    ## ratio clip, inspired by https://github.com/huggingface/trl/blob/5a233546ee48532eaeb24b89b8d0042147574688/trl/trainer/ppo_trainer.py#L1199
                     if torch.any(ratio > 10):
                         action_loss = -surr2.mean()
                     else:
@@ -135,12 +136,12 @@ class PPO():
                     except:
                         print("value/action loss is nan")
                         exit(1)
-                    ppo_loss = value_loss * self.value_loss_coef+action_loss
-                    # print("LOSS: ", loss)
+
+                    ppo_loss = value_loss * self.value_loss_coef + action_loss
+
                     try:
                         self.accelerator.backward(ppo_loss)
                         if self.accelerator.sync_gradients:
-
                             self.accelerator.clip_grad_norm_(
                                 self.actor_critic.parameters(),
                                 self.max_grad_norm
@@ -151,7 +152,7 @@ class PPO():
                         value_loss_epoch += value_loss.item()
                         action_loss_epoch += action_loss.item()
                         ppo_loss_epoch += ppo_loss.item()
-                    except:
+                    except Exception:
                         continue
 
             # save the weights of every epoch update

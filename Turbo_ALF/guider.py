@@ -185,16 +185,19 @@ class MergedModelGuider():
             thought_token_length = get_token_length(self.tokenizer, thought)
             ok = False
             tmp = 0.2
-            while not ok:
+            max_retries = 20
+            for _retry in range(max_retries):
                 try:
                     guide_thought = self.generate_thought(img, prompt_text, tmp)
                     correction, ok, action = self.replace_action(guide_thought, raw_action)
-                except:
+                    if ok:
+                        break
+                except Exception:
                     pass
-                finally:
-                    tmp *= 1.1
-                    if tmp > 0.9:
-                        tmp = 0.9
+                tmp = min(tmp * 1.1, 0.9)
+            if not ok:
+                print(f"WARNING: guider failed after {max_retries} retries")
+                return torch.tensor([[]]).long(), torch.tensor([[-100]]), -5, False, None
 
             # post processing
             correct_res = json.dumps(correction, cls=SingleLineArrayEncoder, indent=2)

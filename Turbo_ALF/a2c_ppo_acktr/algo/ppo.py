@@ -72,9 +72,9 @@ class PPO():
                     obs_batch = obs_batch.to(self.actor_critic.base.device)
                     output_ids_batch = output_ids_batch.to(self.actor_critic.base.device)
                     actions_batch = actions_batch.to(self.actor_critic.base.device)
-                    value_preds_batch.to(self.actor_critic.base.device)
+                    value_preds_batch = value_preds_batch.to(self.actor_critic.base.device)
                     return_batch = return_batch.to(self.actor_critic.base.device)
-                    masks_batch.to(self.actor_critic.base.device)
+                    masks_batch = masks_batch.to(self.actor_critic.base.device)
                     old_action_log_probs_batch = old_action_log_probs_batch.to(self.actor_critic.base.device)
                     adv_targ = adv_targ.to(self.actor_critic.base.device)
                     

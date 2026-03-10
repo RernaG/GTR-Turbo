@@ -101,9 +101,10 @@ class RolloutStorageSFT(object):
         self.masks[self.step + 1].copy_(masks)
         self.bad_masks[self.step + 1].copy_(bad_masks)
         self.format_rewards[self.step].copy_(format_rewards)
-        self.obs_accu[self.step_accu + 1].copy_(obs.cpu())
-        self.input_ids[self.step_accu].copy_(input_ids)
-        self.labels[self.step_accu].copy_(labels)
+        if self.step_accu < self.num_env_steps:
+            self.obs_accu[self.step_accu + 1].copy_(obs.cpu())
+            self.input_ids[self.step_accu].copy_(input_ids)
+            self.labels[self.step_accu].copy_(labels)
         self.diversities[self.step].copy_(diversity_score)
 
         self.step = (self.step + 1) % self.num_steps

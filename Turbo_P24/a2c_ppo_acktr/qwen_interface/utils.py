@@ -44,7 +44,7 @@ def prepare_inputs_labels_for_multimodal(processor, image, prompt_text):
 
     text_inputs = processor.tokenizer(text, return_tensors='pt')
 
-    image_inputs.to('cuda')
-    text_inputs.to('cuda')
+    image_inputs = image_inputs.to('cuda')
+    text_inputs = text_inputs.to('cuda')
 
     return text_inputs.input_ids, text_inputs.attention_mask, image_inputs.pixel_values, image_inputs.image_grid_thw

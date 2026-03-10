@@ -17,6 +17,34 @@ class SingleLineArrayEncoder(json.JSONEncoder):
         result = result.replace('\"\\\"', '').replace('\\\"\"', '')
         return result
 
+
+def extract_json_object(text):
+    raw = text.strip()
+    for fence in ("```json", "```JSON", "```"):
+        raw = raw.replace(fence, "")
+    raw = raw.strip()
+
+    first_object = raw.find("{")
+    first_array = raw.find("[")
+    start_candidates = [idx for idx in (first_object, first_array) if idx != -1]
+    if not start_candidates:
+        raise json.JSONDecodeError("No JSON object found", raw, 0)
+
+    start = min(start_candidates)
+    candidate = raw[start:]
+    decoder = json.JSONDecoder(object_pairs_hook=dict)
+    try:
+        data, _ = decoder.raw_decode(candidate)
+    except json.JSONDecodeError:
+        repaired = repair_json(candidate)
+        data = json.loads(repaired, object_pairs_hook=dict)
+
+    if isinstance(data, list) and len(data) == 1 and isinstance(data[0], dict):
+        data = data[0]
+    if isinstance(data, dict) and "current formula" in data and "formula" not in data:
+        data["formula"] = data.pop("current formula")
+    return data
+
 def preprocess_data(data):
     assert isinstance(data, dict)
     if "cards" in data.keys():
@@ -41,7 +69,7 @@ class MergedModelGuider():
     def merge(self, ckpt_path, tag, update_num, use_ema=False, ema_alpha=0.5):
         adapter_names = []
         for j in range(4):
-            path = os.path.join(ckpt_path, "update_" + str(update_num) + "_" + str(j))
+            path = os.path.join(ckpt_path, tag, "update_" + str(update_num) + "_" + str(j))
             print("Loading adapter: update_" + str(update_num) + "_" + str(j))
             if self.merged_cnt == 0:
                 self.model = PeftModel.from_pretrained(self.base, path, adapter_name="update_" + str(update_num) + "_" + str(j), low_cpu_mem_usage=True, torch_device='cpu')
@@ -152,8 +180,7 @@ class MergedModelGuider():
     def extract_thought(self, text_action):
         check_keys = ['cards', 'formula', 'thoughts', 'action']
         try:
-            raw = text_action.strip()
-            data = json.loads(raw, object_pairs_hook=dict)
+            data = extract_json_object(text_action)
             if set(check_keys).issubset(set(data.keys())):
                 action = data['action']
                 del data['action']
@@ -165,8 +192,7 @@ class MergedModelGuider():
 
     def replace_action(self, text, target_action):
         try:
-            raw = text.strip()
-            data = json.loads(raw, object_pairs_hook=dict)
+            data = extract_json_object(text)
             if 'action' in data.keys():
                 action = data['action']
                 data['action'] = target_action
@@ -191,16 +217,19 @@ class MergedModelGuider():
 
             ok = False
             tmp = 0.2
-            while not ok:
+            max_retries = 20
+            for _retry in range(max_retries):
                 try:
                     guide_thought = self.generate_thought(img, prompt_text, tmp)
                     correction, ok, action = self.replace_action(guide_thought, raw_action)
-                except:
+                    if ok:
+                        break
+                except Exception:
                     pass
-                finally:
-                    tmp *= 1.1
-                    if tmp > 0.9:
-                        tmp = 0.9
+                tmp = min(tmp * 1.1, 0.9)
+            if not ok:
+                print(f"WARNING: guider failed after {max_retries} retries")
+                return torch.tensor([[]]).long(), torch.tensor([[-100]]), -2, False, None
 
             # post processing
             processed_data = preprocess_data(correction)

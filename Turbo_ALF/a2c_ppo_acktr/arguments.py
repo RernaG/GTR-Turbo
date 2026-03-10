@@ -19,7 +19,7 @@ def get_args():
         '--weight-decay',
         type=float,
         default=0,
-        help='weight decay (default: 1e-3)')
+        help='weight decay (default: 0)')
     parser.add_argument(
         '--explore_portion',
         type=float,
@@ -76,7 +76,7 @@ def get_args():
         '--num-processes',
         type=int,
         default=1,
-        help='how many training CPU processes to use (default: 16)')
+        help='how many training CPU processes to use (default: 1)')
     parser.add_argument(
         '--num-steps',
         type=int,
@@ -101,7 +101,7 @@ def get_args():
         '--clip-param',
         type=float,
         default=0.1,
-        help='ppo clip parameter (default: 0.2)')
+        help='ppo clip parameter (default: 0.1)')
     parser.add_argument(
         '--log-interval',
         type=int,
@@ -187,7 +187,13 @@ def get_args():
     parser.add_argument("--steplogdir", type=str, default="steplog")
     
     parser.add_argument("--tag", type=str, default="test")
-    
+
+    # arguments for ema merging
+    parser.add_argument("--use-ema", default=False, action='store_true')
+    parser.add_argument("--ema-alpha", type=float, default=0.5)
+
+    parser.add_argument("--tht-guide", type=str, default="KL")
+
     parser.add_argument("--q4", default=False, action='store_true')
     parser.add_argument("--q8", default=False, action='store_true')
     args = parser.parse_args()

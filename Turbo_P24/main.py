@@ -234,7 +234,7 @@ def main():
 
             print(f"ACTION_REWARD: {reward.item()}")
 
-            if reward.item() == -1:
+            if abs(reward.item() + 1.0) < 1e-6:
                 print("TRUNCATED!")
                 done = [True]
                 reward = torch.FloatTensor([-1.0])
@@ -296,13 +296,14 @@ def main():
             end = time.time()
 
             print(
-                "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.2f}/{:.2f}, min/max reward {:.2f}/{:.2f}, success_rate {:.2f}, legal_action_prob {:.2f}\n"
+                "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.2f}/{:.2f}, min/max reward {:.2f}/{:.2f}, success_rate {:.2f}, legal_action_prob {:.2f}, dist_entropy {:.4f}, value_loss {:.4f}, action_loss {:.4f}\n"
                 .format(j, total_num_steps,
                         int(total_num_steps / (end - start)),
                         len(episode_rewards), np.mean(episode_rewards),
                         np.median(episode_rewards), np.min(episode_rewards),
                         np.max(episode_rewards), np.mean(episode_success_rate),
-                        dist_entropy, value_loss, action_loss, np.mean(legal_action_prob)))
+                        np.mean(legal_action_prob),
+                        dist_entropy, value_loss, action_loss))
             
             if len(thought_tolen) == 0:
                 thought_tolen.append(0)

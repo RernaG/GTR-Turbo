@@ -19,14 +19,14 @@ class VLMValue(nn.Module):
     def __init__(self, base):
         super(VLMValue, self).__init__()
         self.base = base
-        # hard-code to qwen hidden size for the value head
+        hidden_size = base.config.hidden_size
         self.value_head = nn.Sequential(
-            nn.Linear(3584, 1024), # First layer
-            nn.ReLU(), # Non-linearity
-            nn.Linear(1024, 512), # Second layer
-            nn.ReLU(), # Non-linearity
-            nn.Linear(512, 1) # Output layer
-            ).to(base.device, dtype=torch.float16) # Move to specified device with dtype
+            nn.Linear(hidden_size, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 512),
+            nn.ReLU(),
+            nn.Linear(512, 1)
+            ).to(base.device, dtype=torch.float16)
 
     def forward(self, processor, prompt_text, image_tensor):
         # image_tensor = image_tensor.to(self.base.device, dtype = self.base.dtype)
