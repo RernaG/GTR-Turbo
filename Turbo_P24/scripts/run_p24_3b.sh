@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-MODEL_PATH="/data/czd/model/Qwen2.5-VL-3B-Instruct"
-OUTPUT_DIR="/data/czd/GTR-Turbo/Turbo_P24/checkpoints_3b"
+MODEL_PATH="<path-to-Qwen2.5-VL-3B-Instruct>"
+OUTPUT_DIR="<path-to-output-dir>"
 
 mkdir -p "$OUTPUT_DIR"
 
